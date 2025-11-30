@@ -1,13 +1,13 @@
-plant_scale=0.5
+plant_scale=50
 import pypsa
 import math
 import numpy as np
 import matplotlib.pyplot as plt
 def add_distribution_node(j,
                           network,
-                          electrolysis=False,
-                          p_nom_combustion=10,
-                          p_nom_electrolysis=10,
+                          electrolysis=True,
+                          p_nom_combustion=1000,
+                          p_nom_electrolysis=1000,
                           electrolysis_efficiency = 0.4,
                           combustion_efficiency = 0.4,
                           loc = (0,0),
@@ -219,57 +219,85 @@ def add_load_node(j,
 def build_network(distribution_nodes,
                   load_nodes,
                   electric_line_loss_decay = 0.0005,
-                  fuel_line_loss_decay = 0.0005,
-                  plotbool=False):
+                  fuel_line_loss_decay = 0.0006,
+                  plotbool=False,
+                  electrolysis_efficiency=0.6,
+                  combustion_efficiency=0.4,
+                  gen_marg_cost=10,
+                  link_radius2 = 500):
     n = pypsa.Network()
     n.add("Carrier", "CH4")
     n.add("Carrier", "Electricity")
 
     for i, distrib_node in distribution_nodes.iterrows():
-        print(distrib_node)
         add_distribution_node(i+1,
                               n,
-                              electrolysis=distrib_node["electrolysis"],
-                              p_nom_combustion=distrib_node["p_nom_combustion"],
-                              p_nom_electrolysis=distrib_node["p_nom_electrolysis"],
-                              electrolysis_efficiency=distrib_node["electrolysis_efficiency"],
-                              combustion_efficiency=distrib_node["combustion_efficiency"],
-                              loc = distrib_node["loc"]
+                              electrolysis_efficiency=electrolysis_efficiency,
+                              combustion_efficiency=combustion_efficiency,
+                              loc = distrib_node["loc"],
+                              generator=distrib_node['node_type'],
+                              gen_pmax = distrib_node["scaled_supply"],
+                              gen_marg_cost=gen_marg_cost
         )
-        for j in range(i):
-            n.add("Link",
-                  str(j) + str(i) + "fuel",
-                  p_nom=10000,
-                  efficiency = 1,
-                  bus0="DNode"+str(j)+"_Fuel",
-                  bus1="DNode"+str(i)+"_Fuel",
-                  carrier = "CH4",
-                  conversion = False)
-            n.add("Link",
-                  str(i) + str(j) + "fuel",
-                  p_nom=10000,
-                  efficiency = 1,
-                  bus0="DNode"+str(i)+"_Fuel",
-                  bus1="DNode"+str(j)+"_Fuel",
-                  carrier = "CH4",
-                  conversion = False)
-            
-            n.add("Link",
-                  str(j) + str(i) + "fuel",
-                  p_nom=10000,
-                  efficiency = 1,
-                  bus0="DNode"+str(j)+"_elec",
-                  bus1="DNode"+str(i)+"_elec",
-                  carrier = "Electricity",
-                  conversion = False)
-            n.add("Link",
-                  str(i) + str(j) + "fuel",
-                  p_nom=10000,
-                  efficiency = 1,
-                  bus0="DNode"+str(i)+"_elec",
-                  bus1="DNode"+str(j)+"_elec",
-                  carrier = "Electricity",
-                  conversion = False)
+
+        x_i, y_i = distrib_node["loc"]
+
+        # only consider previous nodes j < i
+        for j in range(0, i):
+            other = distribution_nodes.iloc[j]
+            x_j, y_j = other["loc"]
+
+            # squared distance
+            dx = x_i - x_j
+            dy = y_i - y_j
+            dist2 = dx*dx + dy*dy
+
+            # skip if outside radius
+            if dist2 > link_radius2:
+                continue
+
+            # j+1 and i+1 are your DNode indices as before
+            n.add(
+                "Link",
+                f"{j+1}{i+1}fuel",
+                p_nom=10000,
+                efficiency=1,
+                bus0=f"DNode{j+1}_Fuel",
+                bus1=f"DNode{i+1}_Fuel",
+                carrier="CH4",
+                conversion=False,
+            )
+            n.add(
+                "Link",
+                f"{i+1}{j+1}fuel",
+                p_nom=10000,
+                efficiency=1,
+                bus0=f"DNode{i+1}_Fuel",
+                bus1=f"DNode{j+1}_Fuel",
+                carrier="CH4",
+                conversion=False,
+            )
+
+            n.add(
+                "Link",
+                f"{j+1}{i+1}elec",
+                p_nom=10000,
+                efficiency=1,
+                bus0=f"DNode{j+1}_Elec",
+                bus1=f"DNode{i+1}_Elec",
+                carrier="Electricity",
+                conversion=False,
+            )
+            n.add(
+                "Link",
+                f"{i+1}{j+1}elec",
+                p_nom=10000,
+                efficiency=1,
+                bus0=f"DNode{i+1}_Elec",
+                bus1=f"DNode{j+1}_Elec",
+                carrier="Electricity",
+                conversion=False,
+            )
 
 
     for i, load_node in load_nodes.iterrows():
@@ -282,7 +310,7 @@ def build_network(distribution_nodes,
                       )
 
     if plotbool:
-        n.plot()
+        n.plot(geomap=False)
 
     bus_coords = n.buses[["x", "y"]]
     def calc_length(row):
@@ -346,7 +374,8 @@ def build_network(distribution_nodes,
             bus_sizes=bus_sizes,
             link_widths=abs(flows)/flows.abs().max()*5,
             link_colors = link_colors,
-            title=f"Dispatch and Link Flows at {snapshot}"
+            title=f"Dispatch and Link Flows at {snapshot}",
+            geomap=False
         )
     return n
 
