@@ -1,0 +1,4 @@
+Run ID: 20251130_0602
+Graph coordinate transformation (origin at grid center):
+x_graph_km = x_real_km - -3698.256767
+y_graph_km = y_real_km - -307.019088
