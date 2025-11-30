@@ -1,5 +1,5 @@
-Supply scale factor used: 4.0
+Supply scale factor used: 6.0
 Total demand: 121.19424777629851
-Total effective supply: 136.0
+Total effective supply: 204.0
 Status: optimal (SciPy linprog)
-Number of flow edges: 33
+Number of flow edges: 30

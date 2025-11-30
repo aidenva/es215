@@ -14,7 +14,6 @@ import numpy as np
 import pandas as pd
 from scipy.optimize import linprog
 
-
 def solve_supply_demand_network_from_dfs(
     demand_df,
     supply_df,
@@ -166,6 +165,7 @@ def plot_demand_supply_with_flows(
     flows_df=None,
     min_rel_flow=0.01,
     output_png="demand_supply_flows.png",
+    scale_factor=1.0,
 ):
     """
     Plot demand and supply nodes, optionally with flow lines.
@@ -186,6 +186,7 @@ def plot_demand_supply_with_flows(
 
     # Shared color mapping for supply
     supply_vals = supply_df["scaled_supply"].values
+    supply_vals = supply_vals * scale_factor
     supply_norm = plt.Normalize(vmin=supply_vals.min(), vmax=supply_vals.max())
     supply_cmap = plt.cm.Blues
 
@@ -215,8 +216,8 @@ def plot_demand_supply_with_flows(
         ax.scatter(
             wind["x_km_shift"],
             wind["y_km_shift"],
-            s=40 + 10 * wind["scaled_supply"],
-            c=supply_cmap(supply_norm(wind["scaled_supply"])),
+            s=40 + 10 * wind["scaled_supply"]*scale_factor,
+            c=supply_cmap(supply_norm(wind["scaled_supply"]*scale_factor)),
             marker="o",
             edgecolor="#ff00ff",
             linewidth=1.5,
@@ -228,8 +229,8 @@ def plot_demand_supply_with_flows(
         ax.scatter(
             solar["x_km_shift"],
             solar["y_km_shift"],
-            s=40 + 10 * solar["scaled_supply"],
-            c=supply_cmap(supply_norm(solar["scaled_supply"])),
+            s=40 + 10 * solar["scaled_supply"]*scale_factor,
+            c=supply_cmap(supply_norm(solar["scaled_supply"]*scale_factor)),
             marker="o",
             edgecolor="#00bf00",
             linewidth=1.5,
@@ -335,7 +336,8 @@ def run_full_pipeline(
     supply_scale_factor=None,      # None → auto-balance total_supply = total_demand
     min_rel_flow=0.01,
     output_png="demand_supply_flows.png",
-    summary_txt="run_summary.txt"  # NEW: output text file
+    summary_txt="run_summary.txt",
+    flows_csv="optimized_flows.csv"
 ):
     # Load CSVs once
     demand_df = pd.read_csv(demand_csv)
@@ -366,6 +368,10 @@ def run_full_pipeline(
 
     print(f"Saved summary to: {summary_txt}")
 
+    # --- Save flows to CSV ---
+    flows_df.to_csv(flows_csv, index=False)
+    print(f"Saved optimized flows to: {flows_csv}")
+
     # --- Produce the plot ---
     plot_demand_supply_with_flows(
         demand_df,
@@ -373,6 +379,7 @@ def run_full_pipeline(
         flows_df=flows_df,
         min_rel_flow=min_rel_flow,
         output_png=output_png,
+        scale_factor=meta['supply_scale_factor'],
     )
 
     return flows_df, meta
@@ -397,8 +404,9 @@ if __name__ == "__main__":
         demand_csv = sys.argv[1]
         supply_csv = sys.argv[2]
         output = sys.argv[3]
-        output_png = f"{output}_flows.png"
+        output_png = f"{output}_map.png"
         output_txt = f"{output}_summary.txt"
+        output_csv = f"{output}_flows.csv"
         supply_scale_factor = None
         if len(sys.argv) >= 5:
             try:
@@ -412,4 +420,5 @@ if __name__ == "__main__":
             supply_scale_factor=supply_scale_factor,
             output_png=output_png,
             summary_txt=output_txt,
+            flows_csv=output_csv,
         )
