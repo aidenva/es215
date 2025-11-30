@@ -1,0 +1,29 @@
+The demand nodes csv have the following columns:
+cluster_id:     indexing the demand node (= cluster)
+x_m:            x coordinate of the node (in meters, consistent with EPSG:5070 projection)
+y_m:            y coordinate of the node (in meters, consistent with EPSG:5070 projection)
+x_km:           x_m / 1000
+y_km:           y_m / 1000
+x_km_shift:     x_km, but have been translated to make the bottom left corner of the map x-coordinate = 0
+y_km_shift:     y_km, but have been translated to make the bottom left corner of the map y-coordinate = 0
+total_demand:   aggregated what the nodes represent based on the clustering values (light intensity)
+scaled_demand:  based on all the values of total_demand, scale everything down by a common 10^k factor
+
+The supply nodes csv have the following columns:
+cluster_id:     indexing the demand node (= cluster)
+node_type:      wind or solar
+x_m:            x coordinate of the node (in meters, consistent with EPSG:5070 projection)
+y_m:            y coordinate of the node (in meters, consistent with EPSG:5070 projection)
+x_km:           x_m / 1000
+y_km:           y_m / 1000
+x_km_shift:     x_km, but have been translated to make the bottom left corner of the map x-coordinate = 0
+y_km_shift:     y_km, but have been translated to make the bottom left corner of the map y-coordinate = 0
+total_supply:   some value I estimated based on EIA tabulation of real generation amount
+scaled_supply:  based on the values of scaled_demand, scale everything by some factor of 10^j
+
+The important parameters here are x_km_shift (for both), y_km_shift (for both), total_demand (for demand), total_supply (for supply), and node_type (for supply). The values of total_supply and scaled_supply are estimated, so the logic of scaling can be whatever we argue makes the scale of the two comparable. Alternatively, we can scale the demand, because it has no intrinsic energy meaning (it represents the light intensity of that region). Total_supply is an estimation of real generation amount at utility scale in units of billion kWh.
+
+Wind: https://www.eia.gov/energyexplained/wind/where-wind-power-is-harnessed.php
+Solar: https://www.eia.gov/energyexplained/solar/where-solar-is-found.php
+
+The visualization helps illustrate the spatial distribution. Hopefully it is intuitive, except for the fact that wind nodes have magenta edges and solar nodes have green edges. You can tell they look like the shape of continental US. I was trying to overlay the map of the US below but it is somehow really annoying.
