@@ -1,0 +1,14 @@
+Run ID: 20251201_0036
+
+Input raster: us_map_5070.tif
+Original size: 15625 x 8261
+Grid shape: (311, 588)
+X spacing (km): 10.0
+Y spacing (km): 10.0
+Pixel size (m): 375.711 x 375.711
+Clustering number: 20
+Cluster demand scale factor: 10^6
+
+Graph coordinate transformation:
+x_graph_km = x_real_km - -2917.211383
+y_graph_km = y_real_km - 156.911498
