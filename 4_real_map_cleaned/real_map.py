@@ -64,7 +64,7 @@ def clip_conus(
             us = us[us[shapefile_filter_column].isin(shapefile_filter_values)]
             print(f"  Filtered features: {len(us)} (from {before})")
 
-        # Reproject polygon to raster CRS (cheap, no raster distortion)
+        # Reproject polygon to raster CRS
         if us.crs != raster_crs:
             print("Reprojecting shapefile to raster CRS...")
             us = us.to_crs(raster_crs)
@@ -102,35 +102,45 @@ def clip_conus(
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 4:
+    if len(sys.argv) < 5:
         print(
-            "Usage: python clip_conus.py <input.tif> <us_shapefile> <output.tif>\n"
-            "Example: python clip_conus.py nightlights.tif us_conus.shp nightlights_conus.tif"
+            "Usage: python clip_conus.py <input.tif> <us_shapefile> <output.tif> <T/F>\n"
+            "Example: python clip_conus.py nightlights.tif us_conus.shp nightlights_conus.tif True"
         )
         sys.exit(1)
 
     tif = sys.argv[1]
     shp = sys.argv[2]
     out = sys.argv[3]
+    con = sys.argv[4]
 
-    # --- Minimal default: assume shapefile already is CONUS-only ---
-    # If your shapefile has all US states (including AK/HI) and you want
-    # to filter it, uncomment & adapt the example below.
+    if con.lower() == "f" or con.lower() == "false":
+        lower48 = [
+            "AL","AR","AZ","CA","CO","CT","DE","FL","GA","IA","ID","IL","IN","KS","KY",
+            "LA","MA","MD","ME","MI","MN","MO","MS","MT","NC","ND","NE","NH","NJ","NM",
+            "NV","NY","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VA","VT","WA",
+            "WI","WV","WY","DC"
+        ]
+        
+        clip_conus(
+            tif_path=tif,
+            shp_path=shp,
+            out_path=out,
+            shapefile_layer=None,
+            shapefile_filter_column="STUSPS",
+            shapefile_filter_values=lower48,
+        )
 
-    clip_conus(
-        tif_path=tif,
-        shp_path=shp,
-        out_path=out,
+    elif con.lower() == "t" or con.lower() == "true":
+        clip_conus(
+            tif_path=tif,
+            shp_path=shp,
+            out_path=out,
+            shapefile_layer=None,
+            shapefile_filter_column=None,
+            shapefile_filter_values=None,
+        )
 
-        # Example: if using a Census TIGER states shapefile with 'STUSPS'
-        # as the 2-letter state code column:
-        #
-        # shapefile_filter_column="STUSPS",
-        # shapefile_filter_values=[
-        #     "AL","AZ","AR","CA","CO","CT","DE","FL","GA",
-        #     "IA","ID","IL","IN","KS","KY","LA","MA","MD","ME",
-        #     "MI","MN","MO","MS","MT","NC","ND","NE","NH","NJ",
-        #     "NM","NV","NY","OH","OK","OR","PA","RI","SC","SD",
-        #     "TN","TX","UT","VA","VT","WA","WI","WV","WY"
-        # ],
-    )
+    else:
+        print("Error: Fourth argument must be T/True or F/False")
+        sys.exit(1)

@@ -77,11 +77,6 @@ def map_demand_supply(demand_csv, supply_csv):
     plt.savefig("demand_supply_map.png", dpi=300)
     print("Saved demand and supply map to: demand_supply_map.png")
 
-
-# Constants for your shift (from your example row)
-X_SHIFT = 3698.3  # km
-Y_SHIFT = 307.0   # km
-
 def meter_to_shifted_km(x, y, z=None):
     return x / 1000.0 + X_SHIFT, y / 1000.0 + Y_SHIFT
 
@@ -134,7 +129,7 @@ def map_demand_supply_overlay(demand_csv, supply_csv, shp_path):
         facecolor="none",
         linewidth=0.5,
         alpha=0.5,     # <- faint
-        zorder=1
+        zorder=0
     )
 
     d_scatter = ax.scatter(
@@ -190,6 +185,8 @@ def map_demand_supply_overlay(demand_csv, supply_csv, shp_path):
     print("Shifted shapefile bounds:", gdf_shifted.total_bounds)
 
 if __name__ == "__main__":
+    X_SHIFT = 2917.211383  # km
+    Y_SHIFT = -156.911498  # km
 
     if len(sys.argv) == 3:
         demand_csv = sys.argv[1]
@@ -200,6 +197,16 @@ if __name__ == "__main__":
         demand_csv = sys.argv[1]
         supply_csv = sys.argv[2]
         shp_path = sys.argv[3]
+        map_demand_supply_overlay(demand_csv, supply_csv, shp_path)
+
+    elif len(sys.argv) == 6:
+        demand_csv = sys.argv[1]
+        supply_csv = sys.argv[2]
+        shp_path = sys.argv[3]
+        x_shift = float(sys.argv[4])
+        y_shift = float(sys.argv[5])
+        X_SHIFT = x_shift
+        Y_SHIFT = y_shift
         map_demand_supply_overlay(demand_csv, supply_csv, shp_path)
 
     else:
