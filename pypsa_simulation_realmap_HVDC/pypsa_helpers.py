@@ -934,3 +934,117 @@ def search_min_supplyscale_bisection(
 
     return alpha_star, n_star
 
+import numpy as np
+
+import numpy as np
+
+import numpy as np
+
+import numpy as np
+
+def max_electric_transmission_distance_dnodes(
+    n,
+    snapshots=None,
+    use_p0=True,
+    tol=1e-3,
+    electric_carriers=["Electricity"],
+):
+    """
+    Metric: longest distance at which electric transmission between DNode* buses is used,
+    but only for networks that have some fuel (CH4) transmission at all.
+    If there is no CH4 transmission in the network, return np.nan.
+
+    Parameters
+    ----------
+    n : pypsa.Network
+    snapshots : list-like or None
+        Snapshots to consider; defaults to n.snapshots.
+    use_p0 : bool
+        Use n.links_t.p0 if True, n.links_t.p1 if False.
+    tol : float
+        Minimum absolute flow [MW] to consider a link as "used" in any snapshot.
+    electric_carriers : list-like or None
+        List of carrier names treated as "electric".
+        If None, defaults to all carriers except CH4.
+
+    Returns
+    -------
+    max_dist_used : float or np.nan
+        Maximum length among electric transmission links (conversion == False)
+        between DNode* buses that have |flow| > tol in at least one snapshot,
+        provided the network has at least one CH4 transmission link.
+        np.nan if no CH4 transmission exists or no qualifying electric links are used.
+    """
+    if snapshots is None:
+        snapshots = n.snapshots
+
+    # 0) Require that the network has some fuel transmission (CH4, non-conversion)
+    if "carrier" not in n.links or "conversion" not in n.links:
+        raise ValueError("n.links must have 'carrier' and 'conversion' columns.")
+    # Identify CH4 transmission lines (exclude conversion links)
+    fuel_trans_mask = (n.links.carrier == "CH4") & (n.links.conversion == False)
+    fuel_links = n.links.index[fuel_trans_mask]
+
+    # Extract their flows
+    flows = n.links_t.p0.loc[snapshots] if use_p0 else n.links_t.p1.loc[snapshots]
+
+    # Check whether any fuel link is actually used in any snapshot
+    fuel_used_mask = (flows[fuel_links].abs() > tol).any(axis=0)
+
+    # If NO fuel transmission link is used → return nan
+
+    if not fuel_used_mask.any():
+        print("rejected")
+        return np.nan
+
+
+    # 1) Prepare flows and lengths
+    flows = n.links_t.p0.loc[snapshots] if use_p0 else n.links_t.p1.loc[snapshots]
+
+    if "length" not in n.links:
+        raise ValueError("n.links['length'] not found; compute it before calling this function.")
+
+    lengths = n.links["length"]
+
+    # 2) Determine electric carriers if not provided
+    if electric_carriers is None:
+        electric_carriers = [c for c in n.links.carrier.unique() if c != "CH4"]
+
+    # 3) Only consider links that appear in flows
+    links_in_flows = n.links.index.intersection(flows.columns)
+
+    # Base mask: electric carriers, no conversion, present in flows
+    base_mask = (
+        n.links.index.isin(links_in_flows)
+        & n.links.carrier.isin(electric_carriers)
+        & (n.links.conversion == False)
+    )
+
+    # DNode–DNode connection requirement
+    bus0 = n.links.bus0.astype(str)
+    bus1 = n.links.bus1.astype(str)
+    dnode_mask = bus0.str.startswith("DNode") & bus1.str.startswith("DNode")
+
+    # Combined structural mask
+    struct_mask = base_mask & dnode_mask
+
+    candidate_links = n.links.index[struct_mask]
+
+    if len(candidate_links) == 0:
+        return np.nan
+
+    # 4) Restrict flows to candidate links
+    flows_sub = flows.loc[:, candidate_links]
+
+    # Usage: any snapshot with |flow| > tol
+    used_mask = (flows_sub.abs() > tol).any(axis=0)
+    used_links = flows_sub.columns[used_mask]
+
+    if len(used_links) == 0:
+        return np.nan
+
+    max_dist_used = lengths.loc[used_links].max()
+    return float(max_dist_used)
+
+
+
